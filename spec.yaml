@@ -1,0 +1,106 @@
+schemaVersion: "2"
+kind: sandbox
+name: command-code-agent
+displayName: Command Code agent (VS Code Remote - SSH)
+description: >-
+  A shell sandbox with the Command Code VS Code extension preinstalled for
+  VS Code Desktop's Remote - SSH. The editor runs on the host; the workspace,
+  terminals, and the Command Code agent run inside the sandbox.
+
+args:
+  commandcodeVersion:
+    default: "0.2.3"
+    description: Command Code VS Code extension version to preinstall
+
+permissions:
+  network:
+    allow:
+      # Ubuntu package mirrors, used only if unzip is missing from the base image.
+      - archive.ubuntu.com
+      - security.ubuntu.com
+      - ports.ubuntu.com
+
+      # VS Code Server download on the first Remote - SSH connection.
+      - update.code.visualstudio.com
+      - vscode.download.prss.microsoft.com
+      - code.visualstudio.com
+      - "*.vscode-cdn.net"
+      - "*.vo.msecnd.net"
+
+      # VS Code Marketplace, for the extension itself and later installs.
+      - marketplace.visualstudio.com
+      - "*.gallerycdn.vsassets.io"
+      - "*.gallery.vsassets.io"
+      - "*.vsassets.io"
+
+      # Command Code account, API, and sign-in landing page.
+      - commandcode.ai
+      - "*.commandcode.ai"
+      - api.commandcode.ai
+
+sandbox:
+  image: docker.io/docker/sandbox-templates:shell
+  entrypoint: ["/bin/bash"]
+
+setup:
+  startup:
+    - command:
+        - sh
+        - -c
+        - |
+          set -eu
+          ws=/home/agent/workspace
+          target="${WORKSPACE_DIR:-}"
+          [ -n "$target" ] || exit 0
+          [ -d "$target" ] || exit 0
+          [ "$target" = "$ws" ] && exit 0
+          if [ -L "$ws" ]; then
+            ln -sfn "$target" "$ws"
+          elif [ -d "$ws" ]; then
+            rmdir "$ws" 2>/dev/null || exit 0
+            ln -s "$target" "$ws"
+          else
+            ln -s "$target" "$ws"
+          fi
+      user: "0"
+      description: Point the template workdir at the mounted workspace so VS Code opens the project
+
+  install:
+    - command: |
+        set -eu
+        if ! command -v unzip >/dev/null 2>&1; then
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends unzip
+          rm -rf /var/lib/apt/lists/*
+        fi
+      user: "0"
+      description: Ensure unzip is available for the extension VSIX
+
+    - command: |
+        set -eux
+        version="${{ kit.args.commandcodeVersion }}"
+        home=/home/agent
+        ext_dir="${home}/.vscode-server/extensions"
+        ext_name="commandcode.commandcode-vscode-${version}"
+        tmp="$(mktemp -d)"
+        trap 'rm -rf "$tmp"' EXIT
+
+        curl -fsSL \
+          "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/CommandCode/vsextensions/commandcode-vscode/${version}/vspackage" \
+          -o "$tmp/cc.vsix.gz"
+        gunzip -c "$tmp/cc.vsix.gz" > "$tmp/cc.vsix"
+        unzip -q "$tmp/cc.vsix" -d "$tmp/cc"
+
+        mkdir -p "$ext_dir"
+        rm -rf "${ext_dir:?}/${ext_name}"
+        mv "$tmp/cc/extension" "${ext_dir}/${ext_name}"
+      user: "1000"
+      description: Preinstall the Command Code extension for VS Code Remote - SSH
+
+    - command: |
+        set -eu
+        line='[ -n "${WORKSPACE_DIR:-}" ] && [ -d "$WORKSPACE_DIR" ] && cd "$WORKSPACE_DIR"'
+        touch /etc/sandbox-persistent.sh
+        grep -qxF "$line" /etc/sandbox-persistent.sh || printf '%s\n' "$line" >> /etc/sandbox-persistent.sh
+      user: "0"
+      description: Start interactive shells in the mounted workspace instead of the template workdir
