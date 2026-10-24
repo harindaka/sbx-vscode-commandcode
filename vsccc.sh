@@ -8,14 +8,17 @@
 #   ./vsccc.sh ls
 #   ./vsccc.sh open [NAME] [FOLDER]
 #
+# 'up' and 'open' then connect VS Code Desktop to the sandbox with FOLDER
+# (default /home/agent/workspace) already open.
+#
 # Defaults: NAME=command-code-agent, WORKSPACE=$PWD,
 #           KIT=ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2
 # Override the kit with VSCCC_KIT (absolute path to a local kit, or another ref).
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 kit_ref="${VSCCC_KIT:-ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2}"
 default_name="command-code-agent"
+default_folder="/home/agent/workspace"
 
 cmd="${1:-}"
 shift || true
@@ -24,6 +27,20 @@ workspace="${2:-$PWD}"
 
 exists() {
     sbx ls -q | grep -qxF "$name"
+}
+
+open_vscode() {
+    local sandbox="$1" folder="$2"
+    case "$folder" in
+        /*) ;;
+        *) folder="/$folder" ;;
+    esac
+    if ! command -v code >/dev/null 2>&1; then
+        echo "vsccc.sh: the 'code' CLI is not on PATH" >&2
+        echo "vsccc.sh: in VS Code, run 'Shell Command: Install code command in PATH'" >&2
+        exit 2
+    fi
+    exec code --remote "ssh-remote+$sandbox" "$folder"
 }
 
 case "$cmd" in
@@ -36,7 +53,7 @@ case "$cmd" in
             echo "vsccc.sh: creating sandbox '$name' for $workspace"
             sbx run -d --name "$name" "$kit_ref" "$workspace"
         fi
-        exec "$script_dir/open-vscode.sh" "$name"
+        open_vscode "$name" "$default_folder"
         ;;
     down)
         sbx stop "$name"
@@ -48,10 +65,10 @@ case "$cmd" in
         sbx ls
         ;;
     open)
-        exec "$script_dir/open-vscode.sh" "$name" "${2:-/home/agent/workspace}"
+        open_vscode "$name" "${2:-$default_folder}"
         ;;
     *)
-        sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+        sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
         exit 2
         ;;
 esac

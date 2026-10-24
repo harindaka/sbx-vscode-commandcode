@@ -53,23 +53,26 @@ ssh command-code-agent.sbx
 ## Connect VS Code
 
 `Remote - SSH: Connect to Host...` opens an empty window; it does not open a
-folder by itself. Use the opener to connect and open the workspace in one step:
+folder by itself. Use `vsccc.sh open` to connect and open the workspace in one
+step (`vsccc.sh up` does the same after starting the sandbox):
 
 ```sh
-./open-vscode.sh
+./vsccc.sh open
 ```
 
 That runs:
 
 ```sh
-code --remote "ssh-remote+command-code-agent.sbx" /home/agent/workspace
+code --remote "ssh-remote+command-code-agent" /home/agent/workspace
 ```
 
 Pass another sandbox name or folder if needed:
 
 ```sh
-./open-vscode.sh my-sandbox /home/agent/workspace
+./vsccc.sh open my-sandbox /home/agent/workspace
 ```
+
+The folder is resolved inside the sandbox; a relative path is taken from `/`.
 
 Manual alternative: **Remote-SSH: Connect to Host...** →
 `command-code-agent.sbx`, then **File > Open Folder** →
