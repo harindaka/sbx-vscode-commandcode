@@ -43,6 +43,26 @@ resolve_latest_extension() {
     printf '%s\n' "$version"
 }
 
+registry_host() {
+    local first="${1%%/*}"
+    case "$first" in
+        *.*|*:*|localhost) printf '%s\n' "$first" ;;
+        *) printf 'docker.io\n' ;;
+    esac
+}
+
+ensure_registry_login() {
+    local host="$1" config="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+    [ -n "${DOCKER_AUTH_CONFIG:-}" ] && return 0
+    grep -qsF -e "\"$host\"" -e "\"https://$host\"" "$config" && return 0
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "publish.sh: docker CLI not found; skipping login for $host" >&2
+        return 0
+    fi
+    echo "publish.sh: not logged in to $host"
+    docker login "$host"
+}
+
 image="${KIT_IMAGE:-ghcr.io/harindaka/sbx-vscode-commandcode}"
 bump_arg="${1:-patch}"
 dry_run="${DRY_RUN:-0}"
@@ -130,6 +150,8 @@ if [ "$dry_run" = "1" ]; then
         "$current" "$new" "$ref" "$tag" "$extension_version"
     exit 0
 fi
+
+ensure_registry_login "$(registry_host "$image")"
 
 replace_ref() {
     local file="$1" tmp

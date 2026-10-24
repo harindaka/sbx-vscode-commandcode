@@ -141,11 +141,13 @@ so it must never run from the repo root), pins the extension version in the
 staged spec, bumps `VERSION`, updates the reference in `vsccc.sh` and this
 README, commits, pushes the kit, then tags and pushes `vX.Y.Z`.
 
-It needs a clean working tree and registry credentials (`sbx login`,
-`docker login ghcr.io`, or `sbx secret set --registry ghcr.io`). Set
-`KIT_IMAGE` to push somewhere else and `KIT_SIGN=1` for keyless Sigstore
-signing. Make the GHCR package public in its settings if others should pull it
-without credentials. Every push also attaches SLSA provenance.
+It needs a clean working tree and registry credentials. If it cannot find GHCR
+credentials in the Docker config, it runs `docker login ghcr.io` for you; you can
+also log in ahead of time with `docker login ghcr.io`, `sbx login`, or
+`sbx secret set --registry ghcr.io`. Set `KIT_IMAGE` to push somewhere else and
+`KIT_SIGN=1` for keyless Sigstore signing. Make the GHCR package public in its
+settings if others should pull it without credentials. Every push also attaches
+SLSA provenance.
 
 Manual equivalent:
 
