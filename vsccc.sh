@@ -11,11 +11,11 @@
 # stopped, then connects VS Code Desktop with /home/agent/workspace open.
 #
 # Defaults: NAME=command-code-agent, WORKSPACE=$PWD,
-#           KIT=ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2
+#           KIT=ghcr.io/harindaka/sbx-vscode-commandcode:0.1.3
 # Override the kit with VSCCC_KIT (absolute path to a local kit, or another ref).
 set -euo pipefail
 
-kit_ref="${VSCCC_KIT:-ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2}"
+kit_ref="${VSCCC_KIT:-ghcr.io/harindaka/sbx-vscode-commandcode:0.1.3}"
 default_name="command-code-agent"
 default_folder="/home/agent/workspace"
 
