@@ -51,10 +51,28 @@ registry_host() {
     esac
 }
 
+credential_helper() {
+    local host="$1" config="$2" helper
+    helper="$(sed -n "s/.*\"$host\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$config" | head -1)"
+    [ -n "$helper" ] && { printf '%s\n' "$helper"; return; }
+    sed -n 's/.*"credsStore"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$config" | head -1
+}
+
 ensure_registry_login() {
-    local host="$1" config="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+    local host="$1" config="${DOCKER_CONFIG:-$HOME/.docker}/config.json" helper
     [ -n "${DOCKER_AUTH_CONFIG:-}" ] && return 0
-    grep -qsF -e "\"$host\"" -e "\"https://$host\"" "$config" && return 0
+    if [ -f "$config" ]; then
+        helper="$(credential_helper "$host" "$config")"
+        if [ -n "$helper" ]; then
+            if ! command -v "docker-credential-$helper" >/dev/null 2>&1; then
+                echo "publish.sh: credential helper docker-credential-$helper is not on PATH" >&2
+                return 1
+            fi
+            printf '%s' "$host" | "docker-credential-$helper" get >/dev/null 2>&1 && return 0
+        else
+            grep -qsF -e "\"$host\"" -e "\"https://$host\"" "$config" && return 0
+        fi
+    fi
     if ! command -v docker >/dev/null 2>&1; then
         echo "publish.sh: docker CLI not found; skipping login for $host" >&2
         return 0
