@@ -9,12 +9,12 @@
 #   ./vsccc.sh open [NAME] [FOLDER]
 #
 # Defaults: NAME=command-code-agent, WORKSPACE=$PWD,
-#           KIT=ghcr.io/harindaka/sbx-vscode-commandcode:0.1.0
+#           KIT=ghcr.io/harindaka/sbx-vscode-commandcode:0.1.1
 # Override the kit with VSCCC_KIT (absolute path to a local kit, or another ref).
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-kit_ref="${VSCCC_KIT:-ghcr.io/harindaka/sbx-vscode-commandcode:0.1.0}"
+kit_ref="${VSCCC_KIT:-ghcr.io/harindaka/sbx-vscode-commandcode:0.1.1}"
 default_name="command-code-agent"
 
 cmd="${1:-}"
