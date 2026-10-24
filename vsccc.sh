@@ -6,10 +6,9 @@
 #   ./vsccc.sh down [NAME]
 #   ./vsccc.sh rm [NAME]
 #   ./vsccc.sh ls
-#   ./vsccc.sh open [NAME] [FOLDER]
 #
-# 'up' and 'open' then connect VS Code Desktop to the sandbox with FOLDER
-# (default /home/agent/workspace) already open.
+# 'up' is idempotent: it creates the sandbox if needed, starts it if it is
+# stopped, then connects VS Code Desktop with /home/agent/workspace open.
 #
 # Defaults: NAME=command-code-agent, WORKSPACE=$PWD,
 #           KIT=ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2
@@ -30,24 +29,19 @@ exists() {
 }
 
 open_vscode() {
-    local sandbox="$1" folder="$2"
-    case "$folder" in
-        /*) ;;
-        *) folder="/$folder" ;;
-    esac
     if ! command -v code >/dev/null 2>&1; then
         echo "vsccc.sh: the 'code' CLI is not on PATH" >&2
         echo "vsccc.sh: in VS Code, run 'Shell Command: Install code command in PATH'" >&2
         exit 2
     fi
-    exec code --remote "ssh-remote+$sandbox" "$folder"
+    exec code --remote "ssh-remote+$1" "$2"
 }
 
 case "$cmd" in
     up)
         workspace="$(cd "$workspace" && pwd)"
         if exists; then
-            echo "vsccc.sh: restarting sandbox '$name' (workspace stays as created)"
+            echo "vsccc.sh: starting sandbox '$name' (workspace stays as created)"
             sbx run -d --name "$name"
         else
             echo "vsccc.sh: creating sandbox '$name' for $workspace"
@@ -64,11 +58,8 @@ case "$cmd" in
     ls)
         sbx ls
         ;;
-    open)
-        open_vscode "$name" "${2:-$default_folder}"
-        ;;
     *)
-        sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+        sed -n '2,${/^#/!q;s/^# \{0,1\}//;p}' "${BASH_SOURCE[0]}"
         exit 2
         ;;
 esac
