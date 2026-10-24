@@ -29,6 +29,20 @@ Environment:
 EOF
 }
 
+resolve_latest_extension() {
+    local json version
+    json="$(curl -fsSL --max-time 30 -X POST \
+        'https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery' \
+        -H 'Content-Type: application/json' \
+        -H 'Accept: application/json;api-version=7.2-preview.1' \
+        --data '{"filters":[{"criteria":[{"filterType":7,"value":"commandcode.commandcode-vscode"}]}],"flags":914}')" || return 1
+    version="$(printf '%s' "$json" \
+        | grep -o '"versions":\[{"version":"[^"]*"' \
+        | sed 's/.*"version":"//;s/"$//')"
+    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+    printf '%s\n' "$version"
+}
+
 image="${KIT_IMAGE:-ghcr.io/harindaka/sbx-vscode-commandcode}"
 bump_arg="${1:-patch}"
 dry_run="${DRY_RUN:-0}"
@@ -106,9 +120,14 @@ fi
 
 old_ref="ghcr.io/harindaka/sbx-vscode-commandcode:$current"
 
+extension_version="$(resolve_latest_extension)" || {
+    echo "publish.sh: could not resolve the latest Command Code extension version" >&2
+    exit 1
+}
+
 if [ "$dry_run" = "1" ]; then
-    printf 'publish.sh: dry run\n  version: %s -> %s\n  artifact:  %s\n  tag:       %s\n' \
-        "$current" "$new" "$ref" "$tag"
+    printf 'publish.sh: dry run\n  version:   %s -> %s\n  artifact:  %s\n  tag:       %s\n  extension: %s (latest)\n' \
+        "$current" "$new" "$ref" "$tag" "$extension_version"
     exit 0
 fi
 
@@ -135,6 +154,29 @@ sbx kit validate .
 rm -rf dist
 mkdir -p dist
 cp spec.yaml README.md LICENSE dist/
+
+bake_extension_version() {
+    local file="$1" version="$2" tmp
+    tmp="$(mktemp)"
+    awk -v ver="$version" '
+        /^args:/ { in_args = 1 }
+        in_args && /^    default:/ {
+            sub(/default:.*/, "default: \"" ver "\"")
+            in_args = 0
+        }
+        { print }
+    ' "$file" > "$tmp"
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
+    grep -q "default: \"$version\"" "$file"
+}
+
+bake_extension_version dist/spec.yaml "$extension_version" || {
+    echo "publish.sh: could not pin the extension version in dist/spec.yaml" >&2
+    exit 1
+}
+printf 'publish.sh: extension pinned to %s\n' "$extension_version"
+
 sbx kit validate dist
 
 printf 'publish.sh: artifact contents:\n'

@@ -9,8 +9,8 @@ description: >-
 
 args:
   commandcodeVersion:
-    default: "0.2.4"
-    description: Command Code VS Code extension version to preinstall
+    default: "latest"
+    description: Command Code VS Code extension version to preinstall, or "latest"
 
 permissions:
   network:
@@ -79,6 +79,22 @@ setup:
     - command: |
         set -eux
         version="${{ kit.args.commandcodeVersion }}"
+        if [ "$version" = latest ]; then
+          version="$(curl -fsSL --max-time 30 -X POST \
+            "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json;api-version=7.2-preview.1" \
+            --data '{"filters":[{"criteria":[{"filterType":7,"value":"commandcode.commandcode-vscode"}]}],"flags":914}' \
+            | grep -o '"versions":\[{"version":"[^"]*"' \
+            | sed 's/.*"version":"//;s/"$//')"
+        fi
+        case "$version" in
+          [0-9]*.[0-9]*.[0-9]*) ;;
+          *)
+            echo "could not resolve a Command Code extension version" >&2
+            exit 1
+            ;;
+        esac
         home=/home/agent
         ext_dir="${home}/.vscode-server/extensions"
         ext_name="commandcode.commandcode-vscode-${version}"

@@ -81,19 +81,23 @@ network allow list covers the download and the Marketplace.
 
 ## Command Code
 
-The kit preinstalls `commandcode.commandcode-vscode` version `0.2.4` into
+The kit preinstalls `commandcode.commandcode-vscode` into
 `~/.vscode-server/extensions`, so the extension is available in the remote
-window without a separate install. If it does not appear after the first
-connection, run **Developer: Reload Window** or install it once from the
-Extensions view.
+window without a separate install. The checked-in spec resolves `latest` when
+each sandbox is created; `publish.sh` replaces that with the newest Marketplace
+version at publish time, so a published artifact is reproducible.
 
-To pin another version, pass the kit argument when the sandbox is created:
+Pass the kit argument to track the newest version in a published sandbox, or to
+pin a specific one:
 
 ```sh
 sbx run -d --name command-code-agent \
   ghcr.io/harindaka/sbx-vscode-commandcode:0.1.0 "$PWD" \
-  --kit-arg commandcodeVersion=0.2.5
+  --kit-arg commandcodeVersion=latest
 ```
+
+If it does not appear after the first connection, run **Developer: Reload
+Window** or install it once from the Extensions view.
 
 ### Sign-in callback
 
@@ -130,11 +134,12 @@ sbx rm command-code-agent     # delete the sandbox and everything in it
 ./publish.sh patch     # or minor, major, or an explicit X.Y.Z
 ```
 
-`publish.sh` validates the kit, stages only `spec.yaml`, `README.md`, and
-`LICENSE` into `dist/` (`sbx kit push` archives every file in the directory,
-including `.git/`, so it must never run from the repo root), bumps `VERSION`,
-updates the reference in `vsccc.sh` and this README, commits, pushes the kit,
-then tags and pushes `vX.Y.Z`.
+`publish.sh` validates the kit, resolves the newest Command Code extension from
+the Marketplace, stages only `spec.yaml`, `README.md`, and `LICENSE` into
+`dist/` (`sbx kit push` archives every file in the directory, including `.git/`,
+so it must never run from the repo root), pins the extension version in the
+staged spec, bumps `VERSION`, updates the reference in `vsccc.sh` and this
+README, commits, pushes the kit, then tags and pushes `vX.Y.Z`.
 
 It needs a clean working tree and registry credentials (`sbx login`,
 `docker login ghcr.io`, or `sbx secret set --registry ghcr.io`). Set
@@ -160,6 +165,9 @@ VSCCC_KIT="$PWD" ./vsccc.sh up my-sandbox
 
 ## Notes
 
+- The VS Code Server is not baked into the kit. Remote - SSH downloads the
+  version matching your desktop client on the first connection, so it is always
+  current; the kit's allow list covers the download hosts.
 - The base image is `docker.io/docker/sandbox-templates:shell`; it has no
   Docker daemon inside the sandbox. Switch to
   `docker.io/docker/sandbox-templates:shell-docker` if the agent needs an
