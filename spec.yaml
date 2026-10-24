@@ -9,7 +9,7 @@ description: >-
 
 args:
   commandcodeVersion:
-    default: "0.2.3"
+    default: "0.2.4"
     description: Command Code VS Code extension version to preinstall
 
 permissions:

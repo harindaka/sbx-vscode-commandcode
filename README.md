@@ -24,11 +24,17 @@ proxies the connection to the VM.
 From the project you want to work on:
 
 ```sh
-sbx run -d --name command-code-agent /path/to/this/kit "$PWD"
+sbx run -d --name command-code-agent \
+  ghcr.io/harindaka/sbx-vscode-commandcode:0.1.0 "$PWD"
 ```
 
-Replace `/path/to/this/kit` with this directory. `-d` keeps the sandbox running
-after the command returns. Omit `-d` to attach an interactive shell instead.
+`-d` keeps the sandbox running after the command returns. Omit `-d` to attach an
+interactive shell instead. To run from a local checkout of this kit instead of
+the published artifact, pass the directory in place of the registry reference:
+
+```sh
+sbx run -d --name command-code-agent /path/to/this/kit "$PWD"
+```
 
 The workspace is mounted at the same absolute path inside the sandbox. For
 example, if you ran the command from `/home/you/src/my-project`, the sandbox
@@ -75,7 +81,7 @@ network allow list covers the download and the Marketplace.
 
 ## Command Code
 
-The kit preinstalls `commandcode.commandcode-vscode` version `0.2.3` into
+The kit preinstalls `commandcode.commandcode-vscode` version `0.2.4` into
 `~/.vscode-server/extensions`, so the extension is available in the remote
 window without a separate install. If it does not appear after the first
 connection, run **Developer: Reload Window** or install it once from the
@@ -84,8 +90,9 @@ Extensions view.
 To pin another version, pass the kit argument when the sandbox is created:
 
 ```sh
-sbx run -d --name command-code-agent /path/to/this/kit "$PWD" \
-  --kit-arg commandcodeVersion=0.2.4
+sbx run -d --name command-code-agent \
+  ghcr.io/harindaka/sbx-vscode-commandcode:0.1.0 "$PWD" \
+  --kit-arg commandcodeVersion=0.2.5
 ```
 
 ### Sign-in callback
@@ -115,6 +122,40 @@ Authentication persists inside the sandbox across stops and restarts.
 sbx stop command-code-agent   # pause, keep installed tools and sign-in state
 sbx run -d --name command-code-agent   # start it again
 sbx rm command-code-agent     # delete the sandbox and everything in it
+```
+
+## Publishing the kit
+
+```sh
+./publish.sh patch     # or minor, major, or an explicit X.Y.Z
+```
+
+`publish.sh` validates the kit, stages only `spec.yaml`, `README.md`, and
+`LICENSE` into `dist/` (`sbx kit push` archives every file in the directory,
+including `.git/`, so it must never run from the repo root), bumps `VERSION`,
+updates the reference in `vsccc.sh` and this README, commits, pushes the kit,
+then tags and pushes `vX.Y.Z`.
+
+It needs a clean working tree and registry credentials (`sbx login`,
+`docker login ghcr.io`, or `sbx secret set --registry ghcr.io`). Set
+`KIT_IMAGE` to push somewhere else and `KIT_SIGN=1` for keyless Sigstore
+signing. Make the GHCR package public in its settings if others should pull it
+without credentials. Every push also attaches SLSA provenance.
+
+Manual equivalent:
+
+```sh
+sbx kit validate .
+rm -rf dist && mkdir -p dist
+cp spec.yaml README.md LICENSE dist/
+sbx kit push dist ghcr.io/harindaka/sbx-vscode-commandcode:0.1.0
+```
+
+`vsccc.sh` uses that reference by default. Override it with `VSCCC_KIT` to try a
+local or differently tagged kit:
+
+```sh
+VSCCC_KIT="$PWD" ./vsccc.sh up my-sandbox
 ```
 
 ## Notes
