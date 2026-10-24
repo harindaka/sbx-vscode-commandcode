@@ -25,7 +25,7 @@ From the project you want to work on:
 
 ```sh
 sbx run -d --name command-code-agent \
-  ghcr.io/harindaka/sbx-vscode-commandcode:0.1.1 "$PWD"
+  ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2 "$PWD"
 ```
 
 `-d` keeps the sandbox running after the command returns. Omit `-d` to attach an
@@ -92,7 +92,7 @@ pin a specific one:
 
 ```sh
 sbx run -d --name command-code-agent \
-  ghcr.io/harindaka/sbx-vscode-commandcode:0.1.1 "$PWD" \
+  ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2 "$PWD" \
   --kit-arg commandcodeVersion=latest
 ```
 
@@ -155,7 +155,7 @@ Manual equivalent:
 sbx kit validate .
 rm -rf dist && mkdir -p dist
 cp spec.yaml README.md LICENSE dist/
-sbx kit push dist ghcr.io/harindaka/sbx-vscode-commandcode:0.1.1
+sbx kit push dist ghcr.io/harindaka/sbx-vscode-commandcode:0.1.2
 ```
 
 `vsccc.sh` uses that reference by default. Override it with `VSCCC_KIT` to try a
